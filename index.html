@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Lifts</title>
+<style>
+  :root { --bg:#0d0d0f; --card:#1a1a1e; --text:#f4f4f5; --muted:#9a9aa3; --accent:#ff4d2e; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,Segoe UI,Roboto,sans-serif; padding:20px; max-width:560px; margin:auto; }
+  h1 { font-size:28px; margin:8px 0 4px; }
+  p.sub { color:var(--muted); margin:0 0 20px; }
+  label { display:block; color:var(--muted); font-size:13px; margin:14px 0 6px; }
+  select { width:100%; padding:14px; border-radius:12px; border:0; background:var(--card); color:var(--text); font-size:16px; }
+  button { width:100%; padding:16px; margin-top:20px; border:0; border-radius:14px; background:var(--accent); color:#fff; font-size:17px; font-weight:700; }
+  button.alt { background:var(--card); color:var(--text); margin-top:10px; }
+  .card { background:var(--card); border-radius:16px; padding:16px; margin-top:12px; }
+  .card h3 { margin:0 0 4px; font-size:18px; }
+  .tag { display:inline-block; font-size:12px; color:var(--accent); font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
+  .meta { color:var(--muted); font-size:14px; margin-top:4px; }
+  .note { color:var(--muted); font-size:12px; margin-top:24px; }
+</style>
+</head>
+<body>
+<h1>Daily Lifts</h1>
+<p class="sub">Muscle gain and fat loss, gym based.</p>
+
+<label>Today's focus</label>
+<select id="focus">
+  <option value="push">Push (chest, shoulders, triceps)</option>
+  <option value="pull">Pull (back, biceps)</option>
+  <option value="legs">Legs</option>
+  <option value="upper">Upper body</option>
+  <option value="lower">Lower body</option>
+  <option value="full">Full body</option>
+</select>
+
+<label>Your build</label>
+<select id="build">
+  <option value="long">Long legs or long arms</option>
+  <option value="avg" selected>Average proportions</option>
+  <option value="short">Shorter limbs, compact</option>
+</select>
+
+<label>Experience</label>
+<select id="level">
+  <option value="beg">Beginner (under 1 year)</option>
+  <option value="int" selected>Intermediate (1 to 3 years)</option>
+  <option value="adv">Advanced (3+ years)</option>
+</select>
+
+<button id="go">Build today's workout</button>
+<button class="alt" id="shuffle">Shuffle exercises</button>
+
+<div id="out"></div>
+<p class="note">General guidance only. Check form with a trainer, and see a doctor if you have injuries or health concerns.</p>
+
+<script>
+const LIB = {
+  chest_press: ["Barbell Bench Press","Incline Dumbbell Press","Machine Chest Press","Dumbbell Bench Press"],
+  chest_fly: ["Cable Fly","Pec Deck","Low-to-High Cable Fly"],
+  shoulder_press: ["Seated Dumbbell Shoulder Press","Machine Shoulder Press","Standing Overhead Press"],
+  side_raise: ["Dumbbell Lateral Raise","Cable Lateral Raise"],
+  triceps: ["Cable Triceps Pushdown","Overhead Cable Triceps Extension","Skull Crusher","Dips"],
+  vertical_pull: ["Lat Pulldown","Pull-Up","Neutral-Grip Pulldown"],
+  row: ["Chest-Supported Row","Seated Cable Row","One-Arm Dumbbell Row","Barbell Row"],
+  rear_delt: ["Reverse Pec Deck","Face Pull","Rear Delt Cable Fly"],
+  biceps: ["Incline Dumbbell Curl","Barbell Curl","Hammer Curl","Cable Curl"],
+  lunge: ["Walking Lunge","Bulgarian Split Squat","Step-Up"],
+  leg_curl: ["Seated Leg Curl","Lying Leg Curl"],
+  leg_ext: ["Leg Extension"],
+  calf: ["Standing Calf Raise","Seated Calf Raise"],
+  abs: ["Cable Crunch","Hanging Knee Raise","Plank"]
+};
+
+function options(key, build) {
+  if (key === "squat") {
+    if (build === "long") return ["Leg Press","Hack Squat","Goblet Squat"];
+    if (build === "short") return ["Barbell Back Squat","Front Squat","Hack Squat"];
+    return ["Barbell Back Squat","Hack Squat","Leg Press"];
+  }
+  if (key === "hinge") {
+    if (build === "long") return ["Trap Bar Deadlift","Romanian Deadlift","Hip Thrust"];
+    return ["Romanian Deadlift","Conventional Deadlift","Hip Thrust"];
+  }
+  return LIB[key];
+}
+
+const PLANS = {
+  push: ["chest_press","shoulder_press","chest_fly","side_raise","triceps","triceps"],
+  pull: ["vertical_pull","row","row","rear_delt","biceps","biceps"],
+  legs: ["squat","hinge","lunge","leg_curl","leg_ext","calf"],
+  upper: ["chest_press","row","shoulder_press","vertical_pull","biceps","triceps"],
+  lower: ["squat","hinge","lunge","leg_curl","calf","abs"],
+  full: ["squat","chest_press","row","hinge","shoulder_press","abs"]
+};
+
+const COMPOUND = ["squat","hinge","chest_press","shoulder_press","vertical_pull","row","lunge"];
+const PRETTY = { chest_press:"Chest", chest_fly:"Chest", shoulder_press:"Shoulders", side_raise:"Shoulders", rear_delt:"Rear delts", triceps:"Triceps", vertical_pull:"Back", row:"Back", biceps:"Biceps", squat:"Quads", hinge:"Hamstrings and glutes", lunge:"Legs", leg_curl:"Hamstrings", leg_ext:"Quads", calf:"Calves", abs:"Abs" };
+
+function pick(list, used) {
+  const free = list.filter(x => !used.has(x));
+  const pool = free.length ? free : list;
+  const choice = pool[Math.floor(Math.random() * pool.length)];
+  used.add(choice);
+  return choice;
+}
+
+function build() {
+  const focus = document.getElementById("focus").value;
+  const body = document.getElementById("build").value;
+  const level = document.getElementById("level").value;
+  const used = new Set();
+  const sets = level === "beg" ? 3 : level === "int" ? 3 : 4;
+  let html = "";
+  PLANS[focus].forEach(key => {
+    const isComp = COMPOUND.includes(key);
+    const name = pick(options(key, body), used);
+    const reps = isComp ? "6 to 10 reps" : "10 to 15 reps";
+    const n = isComp ? sets + (level === "adv" ? 0 : 0) : 3;
+    const rest = isComp ? "Rest 2 to 3 min" : "Rest 60 to 90 sec";
+    html += `<div class="card"><span class="tag">${PRETTY[key]}</span><h3>${name}</h3><div class="meta">${n} sets, ${reps}. ${rest}.</div></div>`;
+  });
+  html += `<div class="card"><span class="tag">Fat loss finisher</span><h3>Incline Treadmill Walk</h3><div class="meta">10 to 15 minutes at an easy pace. Keep your daily steps up too.</div></div>`;
+  document.getElementById("out").innerHTML = html;
+}
+
+document.getElementById("go").onclick = build;
+document.getElementById("shuffle").onclick = build;
+</script>
+</body>
+</html>
